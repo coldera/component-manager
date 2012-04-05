@@ -103,7 +103,8 @@
                 _component = new cpn();
                 
             }
-        
+            
+            _component['@name'] = key;
             this.components.push({n: key, o: _component});
             
             // 为每个组件添加访问管理器的引用
@@ -123,8 +124,12 @@
             var _cpn = this.components;
             var new_cpn = [];
             
+            var _this = this;
+            
             _util.forEach(this.components, function(item, i) {
                 if(item.n === key) {
+                    _this.cancelListen('all', item);
+                
                     if(typeof item.o['destory'] === 'function') {
                         item.o.destory();
                     }
@@ -165,7 +170,7 @@
         * @return {undefined} 
         * @param {String} key 监听的事件名称（方法名） 
         * @param {Function} callback 回调函数
-        * @param {Object} context [可选] 指定回调函数的调用对象
+        * @param {Object} context [可选] 指定回调函数的调用对象 一般情况建议指定为组件的实例
         */
         listen: function(key, callback, context) {
             var _evt = this.events;
@@ -173,7 +178,7 @@
                 _evt[key] = [];
             }
             
-            _evt[key].push({cb: callback, context: context});
+            _evt[key].push({cb: callback, ctx: context});
         },
         /**
         * 事件发送/分派
@@ -189,10 +194,45 @@
                 _util.forEach(_callbacks, function(item) {
                     var 
                         _cb = item.cb,
-                        _context = item.context;
+                        _context = item.ctx;
                         
                     _cb.apply(_context || NULL, _args);
                 });
+            }
+        },
+        /**
+        * 取消事件监听
+        * @return {undefined}
+        * @param {String} key 事件名称
+        * @param {Object} cpn [可选] 指定取消监听的组件名称
+        */
+        cancelListen: function(key, cpn) {
+            var
+                _evt = this.events,
+                _callbacks = _evt[key];
+            
+            if(cpn && key == 'all') {
+                for(var event_name in _evt) {
+                    this.cancelListen(event_name, cpn);
+                }
+            }
+            
+            if(_callbacks) {
+                if(cpn) {
+                    var new_callbacks = [];
+                
+                    _util.forEach(_callbacks, function(item) {
+                        if(!item.ctx || item.ctx['@name'] != cpn) {
+                            new_callbacks[new_callbacks.length] = item;
+                        }
+                    });
+                    
+                    _evt[key] = new_callbacks;
+                    
+                }else {                    
+                    _evt[key] = NULL;
+                    delete _evt[key];
+                }
             }
         }
     };
