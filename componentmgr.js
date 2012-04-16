@@ -1,8 +1,9 @@
 /**
  * @fileoverview 组件/模块 管理器
  */
- ;(function() {
+ // ;(function() {
     var NULL = null;
+    var DEBUG = false;
         
     var _util = (function() {
         var 
@@ -111,7 +112,7 @@
             _component.cpnMgr = this;
 
             if(typeof _component.init == 'function') {
-                _component.init();
+                _component.init(this);
             }
         },
         /**
@@ -142,6 +143,31 @@
             this.components = new_cpn;
         },
         /**
+        * 把指定的组件打包到一个对象中
+        * @return {undefined}
+        * @param {String} key 组件名称，用空格分隔 
+        * @param {Function} callback 打包的对象传入callback
+        * @example
+        * this.use('cpn1 cpn2', function(obj) {
+            obj.cpn1.doSomething();
+            obj.cpn2.doSomething();
+        });
+        */
+        use: function(key, callback) {
+            if(_util.getType(callback) !== 'Function') 
+                return;
+                
+            var _obj = {};
+                
+            _util.forEach(this.components, function(cpn) {
+                if(_util.strIndexOf(key, cpn.n, ' ') && !_obj[cpn.n]) {
+                    _obj[cpn.n] = cpn.o;
+                }
+            });
+            
+            callback.call(this, _obj);
+        },
+        /**
         * 命令发送到指定组件
         * @return {Any} 返回最后一个组件的方法调用后的返回值
         * @param {String} cmd 命令名称（方法名） 
@@ -167,7 +193,7 @@
         },
         /**
         * 事件监听/订阅
-        * @return {undefined} 
+        * @return {Object} 为了链式操作，返回源对象 
         * @param {String} key 监听的事件名称（方法名） 
         * @param {Function} callback 回调函数
         * @param {Object} context [可选] 指定回调函数的调用对象 一般情况建议指定为组件的实例
@@ -179,6 +205,8 @@
             }
             
             _evt[key].push({cb: callback, ctx: context});
+            
+            return this;
         },
         /**
         * 事件发送/分派
@@ -186,11 +214,13 @@
         * @param {String} key 事件名称
         */
         notify: function(key) {
-            var
-                _args = [].splice.call(arguments, 1),
-                _callbacks = this.events[key];
+            var _callbacks = this.events[key];
+            
+            DEBUG && console.log('event notify: %s', key, _callbacks);
 
-            if(_callbacks) {
+            if(_callbacks) {                
+                var _args = [].splice.call(arguments, 1);
+                
                 _util.forEach(_callbacks, function(item) {
                     var 
                         _cb = item.cb,
@@ -241,4 +271,4 @@
         window.ComponentMgr = ComponentMgr;
     }
     
-})();
+// })();
