@@ -1,9 +1,9 @@
 /**
  * @fileoverview 组件/模块 管理器
  */
- // ;(function() {
+ ;(function() {
     var NULL = null;
-    var DEBUG = false;
+    var DEBUG = true;
         
     var _util = (function() {
         var 
@@ -143,9 +143,27 @@
             this.components = new_cpn;
         },
         /**
+        * 根据组件名称取组件对象
+        * 存在多个同名组件时，只取第一个
+        * @return {Object | Null} 
+        * @param {String} name 组件名称
+        */
+        getByName: function(name) {
+            var _cpn = NULL;
+            
+            _util.forEach(this.components, function(cpn) {
+                if(cpn.n == name) {
+                    _cpn = cpn.o;
+                    return false;
+                }
+            });
+            
+            return _cpn;
+        },
+        /**
         * 把指定的组件打包到一个对象中
-        * @return {undefined}
-        * @param {String} key 组件名称，用空格分隔 
+        * @return {Any} callback的返回值
+        * @param {String} keys 组件名称，用空格分隔 
         * @param {Function} callback 打包的对象传入callback
         * @example
         * this.use('cpn1 cpn2', function(obj) {
@@ -153,19 +171,20 @@
             obj.cpn2.doSomething();
         });
         */
-        use: function(key, callback) {
+        use: function(keys, callback) {
             if(_util.getType(callback) !== 'Function') 
                 return;
                 
-            var _obj = {};
-                
-            _util.forEach(this.components, function(cpn) {
-                if(_util.strIndexOf(key, cpn.n, ' ') && !_obj[cpn.n]) {
-                    _obj[cpn.n] = cpn.o;
-                }
+            var
+                _this = this,
+                _obj = {},
+                name_arr = keys.split(' ');
+            
+            _util.forEach(name_arr, function(name) {
+                _obj[name] = _this.getByName(name);
             });
             
-            callback.call(this, _obj);
+            return callback.call(this, _obj);
         },
         /**
         * 命令发送到指定组件
@@ -194,17 +213,24 @@
         /**
         * 事件监听/订阅
         * @return {Object} 为了链式操作，返回源对象 
-        * @param {String} key 监听的事件名称（方法名） 
+        * @param {String | Array} key 监听的事件名称（方法名） 
         * @param {Function} callback 回调函数
         * @param {Object} context [可选] 指定回调函数的调用对象 一般情况建议指定为组件的实例
         */
         listen: function(key, callback, context) {
-            var _evt = this.events;
-            if(!_evt[key]) {
-                _evt[key] = [];
+            if(_util.getType(key) == 'Array') {
+                _util.forEach(key, function(item) {
+                    this.listen(item, callback, context);
+                }, this);
+            }else {
+        
+                var _evt = this.events;
+                if(!_evt[key]) {
+                    _evt[key] = [];
+                }
+                
+                _evt[key].push({cb: callback, ctx: context});
             }
-            
-            _evt[key].push({cb: callback, ctx: context});
             
             return this;
         },
@@ -220,6 +246,7 @@
 
             if(_callbacks) {                
                 var _args = [].splice.call(arguments, 1);
+                DEBUG && console.log('event notify args: %o', _args);
                 
                 _util.forEach(_callbacks, function(item) {
                     var 
@@ -271,4 +298,4 @@
         window.ComponentMgr = ComponentMgr;
     }
     
-// })();
+})();
